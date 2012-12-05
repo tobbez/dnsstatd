@@ -1,0 +1,38 @@
+dnsstatd - a DNS server statistics collector
+Copyright (c) 2012, Torbjörn Lönnemark <tobbez@ryara.net>
+
+dnsstatd collects DNS response statistics by monitoring responses sent
+by the DNS server, parses them and stores the data in a postgres
+database. All data from the packets sent by the DNS server is saved,
+including client and server IPs, header flags, questions, and resource
+records.
+
+Please consider the privacy issues that arise when deploying dnsstatd.
+
+== Dependencies
+ - netifaces
+ - dnslib
+ - pcap (python-libpcap in debian, pylibpcap in gentoo, py-pcap in FreeBSD)
+ - dpkt
+ - psycopg2
+
+Some dependencies may not be available in your distribution/OS. In those
+cases you can install them from PyPi using pip.
+
+== Configuration
+Modify `config.example` to fit your setup, and save as `config`.
+
+ * `dev` is the device to listen on. Valid values are:
+     - a single interface name
+     - a comma-separated list of interface names
+     - "any" (to listen on all devices)
+ * `db_dsn` is the data source name, which describes how to connect to
+   the postgres server.
+
+
+== Testing
+dnsstatd has been used in a production setting, recording stats for over
+23M responses without issues.
+
+== License
+dnsstatd is released under the ISC license.
