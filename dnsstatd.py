@@ -34,6 +34,33 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=loggin
 __dbconnection = None
 __dbconnect = None
 
+def catch_operational_errors(fn):
+    def error_catcher(*args, **kwargs):
+        try:
+            fn(*args, **kwargs)
+        except psycopg2.OperationalError as ope:
+            logging.error('Failed to insert data into database: %s', ope.message)
+            logging.info('Trying to reconnect')
+            connected = False
+            while not connected:
+                time.sleep(5)
+                try:
+                    __dbconnect()
+                    connected = True
+                except Exception as e:
+                    pass
+            logging.info('Reconnected')
+    return error_catcher
+
+@catch_operational_errors
+def log_unhandled_exception(timestamp, exception, trace, data):
+    enc_data = data.encode('hex')
+    __dbconnection.rollback()
+    cur = __dbconnection.cursor()
+    cur.execute('INSERT INTO dnsstatd_failure (ts, error, packet) VALUES (to_timestamp(%s), %s, %s)', (timestamp, trace, enc_data))
+    __dbconnection.commit()
+    logging.warning('Unhandled exception logged to database: %s', exception)
+
 def check_config(config):
     required = ['dev', 'db_dsn']
     for k in required:
@@ -48,33 +75,16 @@ def handle_packet(length, data, timestamp):
         parse_and_save_packet(data, timestamp)
     except (KeyboardInterrupt, SystemExit):
         raise
-    except psycopg2.OperationalError as ope:
-        logging.error('Failed to insert data into database: %s', ope.message)
-        logging.info('Trying to reconnect')
-        connected = False
-        while not connected:
-            time.sleep(5)
-            try:
-                __dbconnect()
-                connected = True
-            except Exception as e:
-                pass
-        logging.info('Reconnected')
 
     except Exception as e:
-        enc_data = data.encode('hex')
-        __dbconnection.rollback()
-        cur = __dbconnection.cursor()
-        cur.execute('INSERT INTO dnsstatd_failure (ts, error, packet) VALUES (to_timestamp(%s), %s, %s)', (timestamp, traceback.format_exc(), enc_data))
-        __dbconnection.commit()
-        logging.warning('Unhandled exception logged to database: %s', e)
+        log_unhandled_exception(timestamp, e, traceback.format_exc(), data)
 
+@catch_operational_errors
 def parse_and_save_packet(data, timestamp):
     global __dbconnection
     eth = dpkt.ethernet.Ethernet(data)
     ip = eth.data
     udp = ip.data
-    #print(udp.data.encode('hex'))
     dns = dnslib.DNSRecord.parse(udp.data)
     if not (dns.header.opcode == dnslib.OPCODE.lookup('QUERY') and dns.header.qr == dnslib.QR.lookup('RESPONSE')):
         return
@@ -140,9 +150,6 @@ def main(args):
         logging.error("Error connecting to database: %s", dbe.message)
         return
 
-    #logging.info("Database connection established")
-
-
 
     addrs = []
     cap_dev = 'any'
@@ -161,7 +168,6 @@ def main(args):
     pcap_filter = 'src port 53 and ({})'.format(' or '.join(['src ' + x for x in addrs]))
 
     p = pcap.pcapObject()
-    #_, _ = pcap.lookupnet(iface)
     p.open_live(cap_dev, 8192, 0, 100)
 
     p.setfilter(pcap_filter, 0, 0)
