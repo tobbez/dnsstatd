@@ -86,7 +86,7 @@ def parse_and_save_packet(data, timestamp):
     ip = eth.data
     udp = ip.data
     dns = dnslib.DNSRecord.parse(udp.data)
-    if not (dns.header.opcode == dnslib.OPCODE.lookup('QUERY') and dns.header.qr == dnslib.QR.lookup('RESPONSE')):
+    if not (dns.header.opcode == dnslib.OPCODE.QUERY and dns.header.qr == dnslib.QR.RESPONSE):
         return
 
     def format_ip(s):
