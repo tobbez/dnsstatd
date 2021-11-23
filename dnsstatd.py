@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright (c) 2012, Torbjörn Lönnemark <tobbez@ryara.net>
 #
@@ -15,8 +14,6 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
-
-from __future__ import print_function
 
 import os
 import netifaces
@@ -118,7 +115,7 @@ def main(args):
     global __dbconnect
 
     if '-h' in args or '--help' in args:
-        print ('Usage: {}'.format(args[0]))
+        print('Usage: {}'.format(args[0]))
 
     script_path = os.path.dirname(args[0])
 
